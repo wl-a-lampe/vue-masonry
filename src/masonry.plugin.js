@@ -15,26 +15,19 @@ const attributesMap = {
   'stagger': 'stagger'
 }
 const EVENT_ADD = 'vuemasonry.itemAdded'
+const EVENT_LAYOUT = 'vuemasonry.itemLoaded'
 const EVENT_REMOVE = 'vuemasonry.itemRemoved'
 const EVENT_IMAGE_LOADED = 'vuemasonry.imageLoaded'
 const EVENT_DESTROY = 'vuemasonry.destroy'
 
 const stringToBool = function (val) { return (val + '').toLowerCase() === 'true' }
 
-const numberOrSelector = function (val) { return isNaN(val) ? val : parseInt(val) }
-
 const collectOptions = function (attrs) {
   var res = {}
   var attributesArray = Array.prototype.slice.call(attrs)
   attributesArray.forEach(function (attr) {
     if (Object.keys(attributesMap).indexOf(attr.name) > -1) {
-      if (attr.name.indexOf('origin') > -1) {
-        res[attributesMap[attr.name]] = stringToBool(attr.value)
-      } else if (attr.name === 'column-width' || attr.name === 'gutter') {
-        res[attributesMap[attr.name]] = numberOrSelector(attr.value)
-      } else {
-        res[attributesMap[attr.name]] = attr.value
-      }
+      res[attributesMap[attr.name]] = (attr.name.indexOf('origin') > -1) ? stringToBool(attr.value) : attr.value
     }
   })
   return res
@@ -65,8 +58,13 @@ VueMasonryPlugin.install = function (Vue, options) {
         masonryDraw()
       }
 
+      const masonryLayoutHandler = function (eventData) {
+        masonryDraw()
+      }
+
       const masonryDestroyHandler = function (eventData) {
         Events.$off(EVENT_ADD, masonryRedrawHandler)
+        Events.$off(EVENT_LAYOUT, masonryLayoutHandler)
         Events.$off(EVENT_REMOVE, masonryRedrawHandler)
         Events.$off(EVENT_IMAGE_LOADED, masonryRedrawHandler)
         Events.$off(EVENT_DESTROY, masonryDestroyHandler)
@@ -74,6 +72,7 @@ VueMasonryPlugin.install = function (Vue, options) {
       }
 
       Events.$on(EVENT_ADD, masonryRedrawHandler)
+      Events.$on(EVENT_LAYOUT, masonryLayoutHandler)
       Events.$on(EVENT_REMOVE, masonryRedrawHandler)
       Events.$on(EVENT_IMAGE_LOADED, masonryRedrawHandler)
       Events.$on(EVENT_DESTROY, masonryDestroyHandler)
@@ -96,7 +95,7 @@ VueMasonryPlugin.install = function (Vue, options) {
         })
       })
     },
-    unbind: function (el) {
+    beforeDestroy: function (el) {
       Events.$emit(EVENT_REMOVE, {
         'element': el
       })
@@ -104,6 +103,9 @@ VueMasonryPlugin.install = function (Vue, options) {
   })
 
   Vue.prototype.$redrawVueMasonry = function () {
+    Events.$emit(EVENT_LAYOUT)
+  }
+  Vue.prototype.$layoutVueMasonry = function () {
     Events.$emit(EVENT_ADD)
   }
 }
